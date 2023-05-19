@@ -1,0 +1,60 @@
+version: '3.9'
+
+networks:
+  innoscripta:
+
+
+services:
+  database:
+    image: mysql:8.0
+    container_name: '${APP_NAME}-db'
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: "${DB_DATABASE}"
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - innoscripta
+
+  innoscripta-laravel:
+    container_name: '${APP_NAME}-laravel'
+    restart: 'on-failure'
+    build:
+      context: .
+      dockerfile: ./innoscripta-laravel/Dockerfile
+    ports:
+      - 8000:8000
+    volumes:
+      - ./innoscripta-laravel:/var/www/html
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - innoscripta
+
+  innoscripta-react:
+    container_name: '${APP_NAME}-react'
+    restart: 'on-failure'
+    build:
+      context: .
+      dockerfile: ./innoscripta-react/Dockerfile
+    ports:
+      - 5173:5173
+    depends_on:
+      - innoscripta-laravel
+    networks:
+      - innoscripta
+
+volumes:
+  db_data:
